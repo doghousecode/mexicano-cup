@@ -65,10 +65,13 @@ let active = {};       // local toggle cache for setup
 const rand = () => Array.from({length:4},()=>String.fromCharCode(65+Math.floor(Math.random()*26))).join('');
 
 async function loadAll(){
-  const {data:t} = await sb.from('tournaments').select('*').eq('id',code).single();
-  T = t;
-  const {data:m} = await sb.from('matches').select('*').eq('tournament_id',code).order('round').order('court');
-  M = m||[];
+  if(!code){render();return;}
+  try{
+    const {data:t} = await sb.from('tournaments').select('*').eq('id',code).single();
+    T = t;
+    const {data:m} = await sb.from('matches').select('*').eq('tournament_id',code).order('round').order('court');
+    M = m||[];
+  }catch(err){console.error('loadAll error',err);}
   render();
 }
 
