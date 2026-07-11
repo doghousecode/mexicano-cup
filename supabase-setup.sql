@@ -1,4 +1,4 @@
--- Cappuccino Cup — Supabase setup
+-- Mexicano Cup — Supabase setup
 -- Run this in Supabase → SQL Editor → New query → Run
 
 create table tournaments (
