@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cappuccino Cup ☕🎾</title>
+<style>
+  :root{--bg:#1a1410;--card:#2a2018;--card2:#332619;--accent:#c8763a;--accent2:#e8a05a;--text:#f4ece0;--muted:#a8917a;--line:#463726;--gold:#e8b84a;--green:#5a9367}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:14px 14px 40px;max-width:520px;margin:0 auto}
+  h1{font-size:22px;letter-spacing:-.5px}.sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px 14px;font-size:15px;font-weight:700;width:100%;cursor:pointer}
+  .btn:active{opacity:.8}.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .btn.end{background:#7a3535}.btn.small{width:auto;padding:9px 13px;font-size:13px}
+  .row{display:flex;gap:8px;align-items:center}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
+  input[type=text]{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:10px;font-size:16px;width:100%}
+  .pill{display:inline-block;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:14px;margin:3px 5px 3px 0;cursor:pointer;user-select:none}
+  .pill.out{opacity:.35;text-decoration:line-through}
+  .mini{font-size:11px;color:var(--muted);margin-top:8px}
+  .toprow{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .court{background:var(--card2);border-radius:12px;padding:14px;margin-bottom:12px}
+  .courthdr{font-size:11px;color:var(--accent2);font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.6px}
+  .team{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .names{font-size:16px;font-weight:600;flex:1}
+  .stepper{display:flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .stepper button{width:38px;height:40px;background:transparent;border:none;color:var(--accent2);font-size:22px;font-weight:700;cursor:pointer}
+  .stepper .val{width:34px;text-align:center;font-size:19px;font-weight:800}
+  .vs{text-align:center;color:var(--muted);font-size:11px;padding:8px 0}
+  .sumtag{font-size:11px;text-align:right;margin-top:8px}.sumtag.ok{color:var(--green)}.sumtag.bad{color:#d98a6a}
+  .lb-row{display:flex;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line)}.lb-row:last-child{border-bottom:none}
+  .lb-rank{width:30px;color:var(--muted);font-weight:800;font-size:15px}
+  .lb-name{flex:1;font-size:16px;font-weight:600}.lb-pts{font-weight:800;font-size:17px;color:var(--gold)}
+  .lb-row.g1 .lb-rank{color:var(--gold);font-size:18px}.lb-row.g2 .lb-rank{color:#cfd3d6}.lb-row.g3 .lb-rank{color:#cd7f4d}
+  .bye{color:var(--muted);font-size:13px;margin:4px 0 10px;font-style:italic}
+  .final{text-align:center;padding:6px 0 14px}.final .crown{font-size:40px}.final .champ{font-size:24px;font-weight:800;color:var(--gold);margin-top:4px}
+  .code{background:var(--card2);border:1px dashed var(--line);border-radius:10px;padding:10px;text-align:center;font-size:13px;color:var(--muted);margin-bottom:12px}
+  .code b{color:var(--accent2);font-size:16px;letter-spacing:2px}
+  .err{background:#7a3535;color:#fff;border-radius:10px;padding:10px;font-size:13px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="toprow"><div><h1>Cappuccino Cup ☕🎾</h1><div class="sub" id="sub">Mexicano · shared live scoring</div></div></div>
+<div id="app"><div class="card">Loading…</div></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// ── PASTE YOUR SUPABASE DETAILS HERE ──────────────────────
+const SUPABASE_URL  = 'https://emmkxcgusqioeqijntgi.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_J6k0BqsXxj2cr6q0bO5BdQ_eixiLuza';
+// ──────────────────────────────────────────────────────────
+const TARGET = 12;
+const DEFAULT_PLAYERS = ["Tinkler","Jones","Davis","Rhodes","Dyer","Evans","Thrall","Peters"];
+
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON);
+const app = document.getElementById('app');
+const qs = new URLSearchParams(location.search);
+let code = qs.get('t');
+let T = null;          // tournament row
+let M = [];            // matches rows
+let active = {};       // local toggle cache for setup
+
+const rand = () => Array.from({length:4},()=>String.fromCharCode(65+Math.floor(Math.random()*26))).join('');
+
+async function loadAll(){
+  const {data:t} = await sb.from('tournaments').select('*').eq('id',code).single();
+  T = t;
+  const {data:m} = await sb.from('matches').select('*').eq('tournament_id',code).order('round').order('court');
+  M = m||[];
+  render();
+}
+
+function subscribe(){
+  sb.channel('room-'+code)
+    .on('postgres_changes',{event:'*',schema:'public',table:'tournaments',filter:'id=eq.'+code},loadAll)
+    .on('postgres_changes',{event:'*',schema:'public',table:'matches',filter:'tournament_id=eq.'+code},loadAll)
+    .subscribe();
+}
+
+// standings computed from matches
+function standings(){
+  const pts={}; (T.active||[]).forEach(p=>pts[p]=0);
+  M.forEach(x=>{ if(x.score_a==null)return;
+    [x.a1,x.a2].forEach(p=>pts[p]=(pts[p]||0)+x.score_a);
+    [x.b1,x.b2].forEach(p=>pts[p]=(pts[p]||0)+x.score_b);
+  });
+  return pts;
+}
+function rankedNames(){
+  const pts=standings();
+  const names=new Set([...(T.active||[]),...Object.keys(pts).filter(p=>pts[p]>0)]);
+  return [...names].sort((a,b)=>(pts[b]||0)-(pts[a]||0)||a.localeCompare(b));
+}
+function buildPairings(){
+  const pts=standings();
+  let list=[...(T.active||[])];
+  if(T.round>0) list.sort((a,b)=>(pts[b]||0)-(pts[a]||0)||a.localeCompare(b));
+  const pc=list.length-(list.length%4), playing=list.slice(0,pc), byes=list.slice(pc), courts=[];
+  for(let i=0;i<playing.length;i+=4){const g=playing.slice(i,i+4);courts.push([g[0],g[3],g[1],g[2]]);}
+  return {courts,byes};
+}
+
+// ── ACTIONS ──
+async function createTournament(){
+  const players=DEFAULT_PLAYERS;
+  code=rand();
+  await sb.from('tournaments').insert({id:code,target:TARGET,round:0,status:'setup',players,active:players});
+  history.replaceState(null,'','?t='+code);
+  subscribe(); loadAll();
+}
+async function saveActive(){
+  const a=(T.players||[]).filter(p=>active[p]);
+  await sb.from('tournaments').update({active:a}).eq('id',code);
+}
+async function addPlayer(name){
+  const players=[...new Set([...(T.players||[]),name])];
+  active[name]=true;
+  await sb.from('tournaments').update({players,active:players.filter(p=>active[p])}).eq('id',code);
+}
+async function startNextRound(){
+  // guard: current round must be fully scored
+  if(T.round>0){
+    const cur=M.filter(x=>x.round===T.round);
+    if(cur.some(x=>x.score_a==null)){alert('Enter all scores for the current round first');return;}
+  }
+  const nr=T.round+1, {courts,byes}=buildPairings();
+  if(!courts.length){alert('Need at least 4 active players');return;}
+  const rows=courts.map((g,i)=>({tournament_id:code,round:nr,court:i+1,a1:g[0],a2:g[1],b1:g[2],b2:g[3],score_a:null,score_b:null}));
+  await sb.from('matches').insert(rows);
+  await sb.from('tournaments').update({round:nr,status:'live'}).eq('id',code);
+}
+async function setScore(m,side,delta){
+  let a=m.score_a??0, b=m.score_b??0;
+  if(side==='a'){a=Math.max(0,Math.min(TARGET,a+delta));b=TARGET-a;} else {b=Math.max(0,Math.min(TARGET,b+delta));a=TARGET-b;}
+  await sb.from('matches').update({score_a:a,score_b:b}).eq('tournament_id',code).eq('round',m.round).eq('court',m.court);
+}
+async function endGame(){ if(confirm('End tournament & lock the leaderboard?')) await sb.from('tournaments').update({status:'ended'}).eq('id',code); }
+
+// ── RENDER ──
+function render(){
+  if(SUPABASE_URL.startsWith('PASTE')){app.innerHTML='<div class="err">⚙️ Add your Supabase URL + anon key in the code, then reload.</div>';return;}
+  if(!code){app.innerHTML='<div class="card"><label>No tournament loaded</label><button class="btn" id="new">Create new tournament →</button></div>';document.getElementById('new').onclick=createTournament;return;}
+  if(!T){app.innerHTML='<div class="err">Tournament '+code+' not found.</div><button class="btn ghost" id="new">Create a new one</button>';document.getElementById('new').onclick=createTournament;return;}
+  document.getElementById('sub').textContent='Room '+code+' · '+TARGET+' pts/game';
+  if(T.status==='ended') return renderFinal();
+  if(T.status==='setup') return renderSetup();
+  return renderLive();
+}
+
+function share(){return `<div class="code">Share this link with the lads:<br><b>${location.href}</b></div>`;}
+
+function renderSetup(){
+  (T.players||[]).forEach(p=>{ if(active[p]===undefined) active[p]=(T.active||[]).includes(p); });
+  const pills=(T.players||[]).map(p=>`<span class="pill ${active[p]?'':'out'}" data-p="${p}">${p}</span>`).join('');
+  const n=(T.players||[]).filter(p=>active[p]).length;
+  app.innerHTML=share()+`<div class="card">
+    <label>Players (tap to toggle · need a multiple of 4)</label>
+    <div id="pills" style="margin:6px 0 10px">${pills}</div>
+    <div class="mini">${n} active · ${n%4===0?'clean, no byes ✅':(n-n%4)+' play, '+(n%4)+' sit out'}</div>
+    <div class="row" style="margin:12px 0"><input type="text" id="newP" placeholder="add a player…"><button class="btn small" id="addBtn">Add</button></div>
+    <button class="btn" id="startBtn">Start Round 1 →</button></div>`;
+  document.querySelectorAll('#pills .pill').forEach(el=>el.onclick=async()=>{const p=el.dataset.p;active[p]=!active[p];await saveActive();});
+  document.getElementById('addBtn').onclick=async()=>{const v=document.getElementById('newP').value.trim();if(v)await addPlayer(v);};
+  document.getElementById('startBtn').onclick=startNextRound;
+}
+
+function renderLive(){
+  const cur=M.filter(x=>x.round===T.round);
+  const {byes}=buildPairings();
+  let html=share()+`<div class="card"><div class="toprow"><div style="font-size:18px;font-weight:800">Round ${T.round}</div></div>`;
+  if(byes.length) html+=`<div class="bye">☕ Sitting out: ${byes.join(', ')}</div>`;
+  cur.forEach(m=>{
+    const a=m.score_a, b=m.score_b, ok=(a!=null&&a+b===TARGET);
+    html+=`<div class="court"><div class="courthdr">Court ${m.court}</div>
+      <div class="team"><span class="names">${m.a1} & ${m.a2}</span>
+        <div class="stepper"><button data-c="${m.court}" data-s="a" data-d="-1">–</button><span class="val">${a??'–'}</span><button data-c="${m.court}" data-s="a" data-d="1">+</button></div></div>
+      <div class="vs">— vs —</div>
+      <div class="team"><span class="names">${m.b1} & ${m.b2}</span>
+        <div class="stepper"><button data-c="${m.court}" data-s="b" data-d="-1">–</button><span class="val">${b??'–'}</span><button data-c="${m.court}" data-s="b" data-d="1">+</button></div></div>
+      <div class="sumtag ${ok?'ok':'bad'}">${a!=null?`${a} + ${b} = ${a+b}`:'not entered'}</div></div>`;
+  });
+  html+=`<button class="btn" id="next">Save & Next Round →</button>
+    <button class="btn end" id="end" style="margin-top:8px">🏁 END Tournament</button></div>`;
+  html+=`<div class="card"><div class="courthdr">🏆 Live Standings</div>${lbHTML()}</div>`;
+  app.innerHTML=html;
+  document.querySelectorAll('.stepper button').forEach(btn=>btn.onclick=()=>{
+    const m=cur.find(x=>x.court==btn.dataset.c); setScore(m,btn.dataset.s,parseInt(btn.dataset.d));
+  });
+  document.getElementById('next').onclick=startNextRound;
+  document.getElementById('end').onclick=endGame;
+}
+
+function lbHTML(){
+  const pts=standings();
+  return rankedNames().map((p,i)=>`<div class="lb-row ${i<3?'g'+(i+1):''}"><span class="lb-rank">${i+1}</span><span class="lb-name">${p}</span><span class="lb-pts">${pts[p]||0}</span></div>`).join('');
+}
+function renderFinal(){
+  const champ=rankedNames()[0]||'—';
+  app.innerHTML=`<div class="card"><div class="final"><div class="crown">👑</div><div class="mini">CHAMPION</div><div class="champ">${champ}</div></div>${lbHTML()}</div>`;
+}
+
+// boot
+if(code) subscribe();
+loadAll();
+</script>
+</body>
+</html>
